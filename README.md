@@ -54,7 +54,7 @@ docker push YOUR_DOCKERHUB/frontend:v1
 In `k8s/connector/deployment.yaml` and `k8s/frontend/deployment.yaml`,
 replace `YOUR_DOCKERHUB` with your Docker Hub username.
 
-### 3. Deploy (order matters)
+### 3. Deploy 
 
 ```bash
 # Namespace
