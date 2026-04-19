@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Reelkeeper — My Movie List</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:        #0a0a0f;
+      --surface:   #12121a;
+      --card:      #1a1a26;
+      --border:    #2a2a3d;
+      --accent:    #e8b86d;
+      --accent2:   #c0392b;
+      --text:      #e8e6e0;
+      --muted:     #6b6880;
+      --muted2:    #3d3b4f;
+      --green:     #2ecc71;
+      --radius:    6px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 300;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── grain overlay ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      opacity: 0.4;
+    }
+
+    /* ── header ── */
+    header {
+      position: relative; z-index: 10;
+      padding: 2rem 2.5rem 0;
+      display: flex; align-items: flex-end; justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0;
+    }
+
+    .logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.9rem;
+      color: var(--accent);
+      letter-spacing: -0.01em;
+      line-height: 1;
+      padding-bottom: 1rem;
+    }
+    .logo span { font-style: italic; color: var(--text); }
+
+    /* ── tabs ── */
+    .tabs {
+      display: flex; gap: 0;
+    }
+    .tab-btn {
+      background: none; border: none; cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.8rem; font-weight: 500;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--muted);
+      padding: 0.9rem 1.6rem;
+      border-bottom: 2px solid transparent;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* ── main layout ── */
+    main {
+      position: relative; z-index: 1;
+      max-width: 1100px; margin: 0 auto;
+      padding: 2.5rem 2rem;
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; animation: fadeUp 0.3s ease; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── section headings ── */
+    .section-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.4rem;
+      color: var(--text);
+      margin-bottom: 1.5rem;
+    }
+    .section-title em {
+      font-style: italic; color: var(--accent);
+    }
+
+    /* ── search box ── */
+    .search-row {
+      display: flex; gap: 0.75rem; margin-bottom: 1.5rem;
+    }
+    .search-row input {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      padding: 0.7rem 1rem;
+      border-radius: var(--radius);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-row input:focus { border-color: var(--accent); }
+    .search-row input::placeholder { color: var(--muted); }
+
+    .btn {
+      background: var(--accent);
+      color: #0a0a0f;
+      border: none; cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem; font-weight: 500;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 0.7rem 1.4rem;
+      border-radius: var(--radius);
+      transition: opacity 0.2s, transform 0.1s;
+      white-space: nowrap;
+    }
+    .btn:hover { opacity: 0.88; }
+    .btn:active { transform: scale(0.97); }
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .btn-ghost:hover { border-color: var(--text); color: var(--text); }
+    .btn-danger { background: var(--accent2); color: #fff; }
+    .btn-sm { padding: 0.4rem 0.9rem; font-size: 0.75rem; }
+
+    /* ── OMDB results ── */
+    #omdb-results {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .omdb-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .omdb-card:hover { border-color: var(--accent); transform: translateY(-3px); }
+    .omdb-card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+    .omdb-card img {
+      width: 100%; aspect-ratio: 2/3; object-fit: cover;
+      display: block;
+      background: var(--muted2);
+    }
+    .omdb-card-info {
+      padding: 0.6rem 0.7rem;
+    }
+    .omdb-card-title {
+      font-size: 0.8rem; font-weight: 500;
+      color: var(--text);
+      line-height: 1.3;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .omdb-card-year { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+
+    /* ── add form ── */
+    #add-form {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      display: none;
+    }
+    #add-form.visible { display: block; animation: fadeUp 0.25s ease; }
+
+    .selected-movie-header {
+      display: flex; gap: 1rem; margin-bottom: 1.5rem;
+      align-items: flex-start;
+    }
+    .selected-poster {
+      width: 80px; flex-shrink: 0;
+      border-radius: 4px; overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .selected-poster img { width: 100%; display: block; }
+    .selected-meta h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.1rem; color: var(--text);
+      margin-bottom: 0.3rem;
+    }
+    .selected-meta p { font-size: 0.8rem; color: var(--muted); line-height: 1.6; }
+    .imdb-badge {
+      display: inline-block;
+      background: #f5c518; color: #000;
+      font-size: 0.68rem; font-weight: 700;
+      padding: 1px 6px; border-radius: 3px;
+      margin-right: 6px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+    .form-group.full { grid-column: 1 / -1; }
+    label {
+      font-size: 0.72rem; font-weight: 500;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--muted);
+    }
+    input[type=text], input[type=date], select, textarea {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      padding: 0.6rem 0.85rem;
+      border-radius: var(--radius);
+      outline: none;
+      transition: border-color 0.2s;
+      width: 100%;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+    textarea { resize: vertical; min-height: 80px; }
+    select option { background: var(--surface); }
+
+    /* star rating */
+    .star-rating {
+      display: flex; gap: 4px; flex-direction: row-reverse;
+      justify-content: flex-end;
+    }
+    .star-rating input { display: none; }
+    .star-rating label {
+      font-size: 1.4rem; cursor: pointer;
+      color: var(--muted2);
+      text-transform: none; letter-spacing: 0;
+      transition: color 0.1s;
+    }
+    .star-rating label:hover,
+    .star-rating label:hover ~ label,
+    .star-rating input:checked ~ label { color: var(--accent); }
+
+    /* vibes tags */
+    .vibes-options {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+    }
+    .vibe-tag {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.78rem;
+      padding: 0.3rem 0.75rem;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+    }
+    .vibe-tag.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #0a0a0f;
+      font-weight: 500;
+    }
+
+    .form-actions {
+      display: flex; gap: 0.75rem; margin-top: 1.25rem;
+      justify-content: flex-end;
+    }
+
+    /* ── watched table tab ── */
+    .filter-bar {
+      display: flex; gap: 0.75rem; flex-wrap: wrap;
+      margin-bottom: 1.5rem; align-items: center;
+    }
+    .filter-bar input, .filter-bar select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.88rem;
+      padding: 0.55rem 0.85rem;
+      border-radius: var(--radius);
+      outline: none;
+    }
+    .filter-bar input:focus, .filter-bar select:focus { border-color: var(--accent); }
+    .filter-bar input { flex: 1; min-width: 180px; }
+
+    .movies-table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    table {
+      width: 100%; border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    thead tr {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      text-align: left;
+      font-size: 0.68rem; font-weight: 500;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--muted);
+      padding: 0.75rem 1rem;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+    }
+    th:hover { color: var(--accent); }
+    th .sort-arrow { margin-left: 4px; opacity: 0.4; }
+    th.sorted .sort-arrow { opacity: 1; color: var(--accent); }
+
+    tbody tr {
+      border-bottom: 1px solid var(--muted2);
+      transition: background 0.15s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--card); }
+
+    td { padding: 0.7rem 1rem; color: var(--text); vertical-align: middle; }
+
+    .poster-thumb {
+      width: 36px; height: 54px;
+      object-fit: cover; border-radius: 3px;
+      background: var(--muted2);
+      display: block;
+    }
+
+    .stars-display { color: var(--accent); letter-spacing: -1px; font-size: 0.9rem; }
+
+    .genre-tag {
+      background: var(--muted2); color: var(--muted);
+      font-size: 0.7rem; padding: 2px 8px;
+      border-radius: 20px; white-space: nowrap;
+    }
+
+    .vibe-pill {
+      display: inline-block;
+      background: rgba(232,184,109,0.12);
+      color: var(--accent);
+      font-size: 0.68rem; padding: 2px 7px;
+      border-radius: 20px; margin: 1px;
+    }
+
+    .watched-badge {
+      display: inline-block;
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--green);
+    }
+    .unwatched-badge {
+      display: inline-block;
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--muted2);
+    }
+
+    .action-btns { display: flex; gap: 0.4rem; }
+
+    /* ── empty / loading states ── */
+    .empty-state {
+      text-align: center; padding: 4rem 2rem;
+      color: var(--muted);
+    }
+    .empty-state .big { font-size: 2.5rem; margin-bottom: 0.75rem; }
+    .empty-state p { font-size: 0.9rem; }
+
+    .loading { color: var(--muted); font-size: 0.85rem; padding: 1rem 0; }
+
+    /* ── toast ── */
+    #toast {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      background: var(--card); border: 1px solid var(--accent);
+      color: var(--text); font-size: 0.85rem;
+      padding: 0.75rem 1.25rem; border-radius: var(--radius);
+      z-index: 999; opacity: 0; pointer-events: none;
+      transition: opacity 0.3s;
+      max-width: 300px;
+    }
+    #toast.show { opacity: 1; }
+
+    /* ── modal ── */
+    .modal-backdrop {
+      display: none; position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+      align-items: center; justify-content: center;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.75rem;
+      width: min(520px, 95vw); max-height: 90vh; overflow-y: auto;
+      animation: fadeUp 0.25s ease;
+    }
+    .modal h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.1rem; margin-bottom: 1.25rem;
+      color: var(--text);
+    }
+    .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.25rem; }
+
+    /* ── responsive ── */
+    @media (max-width: 640px) {
+      header { flex-direction: column; align-items: flex-start; gap: 0; padding: 1.5rem 1rem 0; }
+      main { padding: 1.5rem 1rem; }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-group.full { grid-column: 1; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Reel<span>keeper</span></div>
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="add">＋ Add Movie</button>
+    <button class="tab-btn" data-tab="watched">My Collection</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ══════════════════════════════════════════════
+       TAB 1 — ADD MOVIE
+  ══════════════════════════════════════════════ -->
+  <div class="tab-panel active" id="tab-add">
+    <h2 class="section-title">Search <em>IMDB</em> &amp; Add</h2>
+
+    <div class="search-row">
+      <input type="text" id="omdb-search-input" placeholder="Search for a movie title…" autocomplete="off"/>
+      <button class="btn" id="omdb-search-btn">Search</button>
+    </div>
+
+    <div id="omdb-results"></div>
+
+    <!-- Add form — shown after selecting a movie -->
+    <div id="add-form">
+      <div class="selected-movie-header">
+        <div class="selected-poster">
+          <img id="sel-poster" src="" alt="poster"/>
+        </div>
+        <div class="selected-meta">
+          <h3 id="sel-title">—</h3>
+          <p id="sel-meta">—</p>
+        </div>
+      </div>
+
+      <div class="form-grid">
+
+        <div class="form-group full">
+          <label>My Rating</label>
+          <div class="star-rating" id="star-rating">
+            <input type="radio" name="rating" id="s10" value="10"/><label for="s10">★</label>
+            <input type="radio" name="rating" id="s9"  value="9" /><label for="s9" >★</label>
+            <input type="radio" name="rating" id="s8"  value="8" /><label for="s8" >★</label>
+            <input type="radio" name="rating" id="s7"  value="7" /><label for="s7" >★</label>
+            <input type="radio" name="rating" id="s6"  value="6" /><label for="s6" >★</label>
+            <input type="radio" name="rating" id="s5"  value="5" /><label for="s5" >★</label>
+            <input type="radio" name="rating" id="s4"  value="4" /><label for="s4" >★</label>
+            <input type="radio" name="rating" id="s3"  value="3" /><label for="s3" >★</label>
+            <input type="radio" name="rating" id="s2"  value="2" /><label for="s2" >★</label>
+            <input type="radio" name="rating" id="s1"  value="1" /><label for="s1" >★</label>
+          </div>
+        </div>
+
+        <div class="form-group full">
+          <label>The Vibes</label>
+          <div class="vibes-options" id="vibes-options">
+            <span class="vibe-tag" data-vibe="Mind-bending">Mind-bending</span>
+            <span class="vibe-tag" data-vibe="Heartwarming">Heartwarming</span>
+            <span class="vibe-tag" data-vibe="Edge of seat">Edge of seat</span>
+            <span class="vibe-tag" data-vibe="Tear-jerker">Tear-jerker</span>
+            <span class="vibe-tag" data-vibe="Laugh-out-loud">Laugh-out-loud</span>
+            <span class="vibe-tag" data-vibe="Slow burn">Slow burn</span>
+            <span class="vibe-tag" data-vibe="Dark &amp; gritty">Dark &amp; gritty</span>
+            <span class="vibe-tag" data-vibe="Feel-good">Feel-good</span>
+            <span class="vibe-tag" data-vibe="Visually stunning">Visually stunning</span>
+            <span class="vibe-tag" data-vibe="Thought-provoking">Thought-provoking</span>
+            <span class="vibe-tag" data-vibe="Cult classic">Cult classic</span>
+            <span class="vibe-tag" data-vibe="Guilty pleasure">Guilty pleasure</span>
+          </div>
+        </div>
+
+        <div class="form-group full">
+          <label>My Review</label>
+          <textarea id="review-input" placeholder="What did you think? (optional)"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Status</label>
+          <select id="watched-select">
+            <option value="watchlist">Add to Watchlist</option>
+            <option value="watched">Already Watched</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="watched-on-group" style="display:none">
+          <label>Watched On</label>
+          <input type="date" id="watched-on-input"/>
+        </div>
+
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-ghost" id="cancel-add-btn">Cancel</button>
+        <button class="btn" id="save-movie-btn">Save Movie</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       TAB 2 — COLLECTION
+  ══════════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-watched">
+    <h2 class="section-title">My <em>Collection</em></h2>
+
+    <div class="filter-bar">
+      <input type="text" id="filter-search" placeholder="Filter by title…"/>
+      <select id="filter-status">
+        <option value="">All movies</option>
+        <option value="watched">Watched</option>
+        <option value="watchlist">Watchlist</option>
+      </select>
+      <select id="filter-genre">
+        <option value="">All genres</option>
+        <option>Action</option><option>Adventure</option><option>Animation</option>
+        <option>Comedy</option><option>Crime</option><option>Documentary</option>
+        <option>Drama</option><option>Fantasy</option><option>Horror</option>
+        <option>Mystery</option><option>Romance</option><option>Sci-Fi</option>
+        <option>Thriller</option>
+      </select>
+      <select id="filter-rating">
+        <option value="">Any rating</option>
+        <option value="9">9–10 ★★★★★</option>
+        <option value="7">7–8 ★★★★</option>
+        <option value="5">5–6 ★★★</option>
+        <option value="1">1–4 ★★</option>
+      </select>
+      <button class="btn btn-ghost btn-sm" id="refresh-btn">↺ Refresh</button>
+    </div>
+
+    <div class="movies-table-wrap">
+      <table id="movies-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th data-col="title">Title <span class="sort-arrow">↕</span></th>
+            <th data-col="year">Year <span class="sort-arrow">↕</span></th>
+            <th data-col="genre">Genre</th>
+            <th data-col="my_rating">My Rating <span class="sort-arrow">↕</span></th>
+            <th data-col="imdb_rating">IMDB <span class="sort-arrow">↕</span></th>
+            <th>Vibes</th>
+            <th data-col="watched">Status <span class="sort-arrow">↕</span></th>
+            <th data-col="watched_on">Watched On <span class="sort-arrow">↕</span></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="movies-tbody">
+          <tr><td colspan="10" class="loading">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── Edit modal ── -->
+<div class="modal-backdrop" id="edit-modal">
+  <div class="modal">
+    <h3>Edit Entry</h3>
+    <input type="hidden" id="edit-id"/>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>My Rating</label>
+        <div class="star-rating" id="edit-star-rating">
+          <input type="radio" name="edit-rating" id="es10" value="10"/><label for="es10">★</label>
+          <input type="radio" name="edit-rating" id="es9"  value="9" /><label for="es9" >★</label>
+          <input type="radio" name="edit-rating" id="es8"  value="8" /><label for="es8" >★</label>
+          <input type="radio" name="edit-rating" id="es7"  value="7" /><label for="es7" >★</label>
+          <input type="radio" name="edit-rating" id="es6"  value="6" /><label for="es6" >★</label>
+          <input type="radio" name="edit-rating" id="es5"  value="5" /><label for="es5" >★</label>
+          <input type="radio" name="edit-rating" id="es4"  value="4" /><label for="es4" >★</label>
+          <input type="radio" name="edit-rating" id="es3"  value="3" /><label for="es3" >★</label>
+          <input type="radio" name="edit-rating" id="es2"  value="2" /><label for="es2" >★</label>
+          <input type="radio" name="edit-rating" id="es1"  value="1" /><label for="es1" >★</label>
+        </div>
+      </div>
+      <div class="form-group full">
+        <label>Vibes</label>
+        <div class="vibes-options" id="edit-vibes-options">
+          <span class="vibe-tag" data-vibe="Mind-bending">Mind-bending</span>
+          <span class="vibe-tag" data-vibe="Heartwarming">Heartwarming</span>
+          <span class="vibe-tag" data-vibe="Edge of seat">Edge of seat</span>
+          <span class="vibe-tag" data-vibe="Tear-jerker">Tear-jerker</span>
+          <span class="vibe-tag" data-vibe="Laugh-out-loud">Laugh-out-loud</span>
+          <span class="vibe-tag" data-vibe="Slow burn">Slow burn</span>
+          <span class="vibe-tag" data-vibe="Dark &amp; gritty">Dark &amp; gritty</span>
+          <span class="vibe-tag" data-vibe="Feel-good">Feel-good</span>
+          <span class="vibe-tag" data-vibe="Visually stunning">Visually stunning</span>
+          <span class="vibe-tag" data-vibe="Thought-provoking">Thought-provoking</span>
+          <span class="vibe-tag" data-vibe="Cult classic">Cult classic</span>
+          <span class="vibe-tag" data-vibe="Guilty pleasure">Guilty pleasure</span>
+        </div>
+      </div>
+      <div class="form-group full">
+        <label>Review</label>
+        <textarea id="edit-review"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="edit-watched">
+          <option value="false">Watchlist</option>
+          <option value="true">Watched</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Watched On</label>
+        <input type="date" id="edit-watched-on"/>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="close-modal-btn">Cancel</button>
+      <button class="btn" id="save-edit-btn">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────────
+let selectedMovie = null;   // OMDB detail object
+let allMovies = [];
+let sortCol = 'added_on';
+let sortDir = -1;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const toast = (msg, dur=3000) => {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove('show'), dur);
+};
+
+function starsHtml(n, max=10) {
+  if (!n) return '<span style="color:var(--muted)">—</span>';
+  return '<span class="stars-display">' + '★'.repeat(n) + '<span style="color:var(--muted2)">' + '★'.repeat(max-n) + '</span></span>';
+}
+
+function getCsrf() {
+  const c = document.cookie.split(';').find(c=>c.trim().startsWith('csrftoken='));
+  return c ? c.split('=')[1] : '';
+}
+
+// REPLACE with:
+async function apiFetch(path, opts={}) {
+  const res = await fetch('/api/' + path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    console.error('apiFetch error:', res.status, text);
+    throw new Error(text);
+  }
+  return res.json();
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    $('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'watched') loadMovies();
+  });
+});
+
+// ── Vibes ─────────────────────────────────────────────────────────────────────
+function initVibes(container) {
+  container.querySelectorAll('.vibe-tag').forEach(tag => {
+    tag.addEventListener('click', () => tag.classList.toggle('active'));
+  });
+}
+function getVibes(container) {
+  return Array.from(container.querySelectorAll('.vibe-tag.active'))
+    .map(t => t.dataset.vibe).join(', ');
+}
+function setVibes(container, vibesStr) {
+  const active = (vibesStr || '').split(',').map(s => s.trim());
+  container.querySelectorAll('.vibe-tag').forEach(tag => {
+    tag.classList.toggle('active', active.includes(tag.dataset.vibe));
+  });
+}
+initVibes($('vibes-options'));
+initVibes($('edit-vibes-options'));
+
+// ── Watched-on toggle ─────────────────────────────────────────────────────────
+$('watched-select').addEventListener('change', function() {
+  $('watched-on-group').style.display = this.value === 'watched' ? '' : 'none';
+  if (this.value === 'watched') $('watched-on-input').valueAsDate = new Date();
+});
+
+// ── OMDB Search ───────────────────────────────────────────────────────────────
+async function doSearch() {
+  const q = $('omdb-search-input').value.trim();
+  if (!q) return;
+  const container = $('omdb-results');
+  container.innerHTML = '<p class="loading">Searching…</p>';
+  $('add-form').classList.remove('visible');
+  selectedMovie = null;
+
+  const data = await apiFetch('omdb/search?q=' + encodeURIComponent(q));
+
+  if (!data.Search) {
+    container.innerHTML = '<p class="loading">' + (data.Error || 'No results.') + '</p>';
+    return;
+  }
+
+  container.innerHTML = '';
+  data.Search.forEach(m => {
+    const card = document.createElement('div');
+    card.className = 'omdb-card';
+    card.innerHTML = `
+      <img src="${m.Poster !== 'N/A' ? m.Poster : ''}" alt="${m.Title}" loading="lazy"
+           onerror="this.style.background='var(--muted2)'"/>
+      <div class="omdb-card-info">
+        <div class="omdb-card-title">${m.Title}</div>
+        <div class="omdb-card-year">${m.Year}</div>
+      </div>`;
+    card.addEventListener('click', () => selectMovie(m.imdbID, card));
+    container.appendChild(card);
+  });
+}
+
+$('omdb-search-btn').addEventListener('click', doSearch);
+$('omdb-search-input').addEventListener('keydown', e => { if(e.key==='Enter') doSearch(); });
+
+async function selectMovie(imdbID, cardEl) {
+  document.querySelectorAll('.omdb-card').forEach(c => c.classList.remove('selected'));
+  cardEl.classList.add('selected');
+
+  const data = await apiFetch('omdb/detail?id=' + imdbID);
+  selectedMovie = data;
+
+  $('sel-poster').src = data.Poster !== 'N/A' ? data.Poster : '';
+  $('sel-title').textContent = data.Title;
+  $('sel-meta').innerHTML = `
+    <span class="imdb-badge">IMDB</span>${data.imdbRating}/10 &nbsp;·&nbsp;
+    ${data.Year} &nbsp;·&nbsp; ${data.Genre} &nbsp;·&nbsp; Dir. ${data.Director}`;
+
+  // reset form
+  document.querySelectorAll('#add-form input[type=radio]').forEach(r => r.checked = false);
+  $('review-input').value = '';
+  $('watched-select').value = 'watchlist';
+  $('watched-on-group').style.display = 'none';
+  $('vibes-options').querySelectorAll('.vibe-tag').forEach(t => t.classList.remove('active'));
+
+  $('add-form').classList.add('visible');
+  $('add-form').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ── Save movie ────────────────────────────────────────────────────────────────
+
+$('save-movie-btn').addEventListener('click', async () => {
+  if (!selectedMovie) { toast('Select a movie first'); return; }
+  if (!selectedMovie.Title) { toast('Error: movie detail not loaded yet, click the poster again'); return; }
+
+fetch('/api/omdb/detail?id=tt0111161').then(r=>r.text()).then(console.log)
+
+  const ratingEl = document.querySelector('input[name="rating"]:checked');
+  const watched = $('watched-select').value === 'watched';
+  const watchedOn = watched ? $('watched-on-input').value : null;
+
+  const body = {
+    imdb_id:     selectedMovie.imdbID,
+    title:       selectedMovie.Title,
+    year:        selectedMovie.Year,
+    genre:       selectedMovie.Genre,
+    director:    selectedMovie.Director,
+    poster_url:  selectedMovie.Poster !== 'N/A' ? selectedMovie.Poster : '',
+    imdb_rating: selectedMovie.imdbRating,
+    my_rating:   ratingEl ? parseInt(ratingEl.value) : null,
+    review:      $('review-input').value.trim(),
+    vibes:       getVibes($('vibes-options')),
+    watched,
+    watched_on:  watchedOn || '',
+  };
+
+  const result = await apiFetch('movies', { method: 'POST', body: JSON.stringify(body) });
+  if (result.error) { toast('Error: ' + result.error); return; }
+
+  toast('🎬 ' + result.title + ' saved!');
+  $('add-form').classList.remove('visible');
+  $('omdb-results').innerHTML = '';
+  $('omdb-search-input').value = '';
+  selectedMovie = null;
+});
+
+$('cancel-add-btn').addEventListener('click', () => {
+  $('add-form').classList.remove('visible');
+  document.querySelectorAll('.omdb-card').forEach(c => c.classList.remove('selected'));
+});
+
+// ── Load & render movies ──────────────────────────────────────────────────────
+async function loadMovies() {
+  const params = new URLSearchParams();
+  const s = $('filter-search').value.trim();
+  const status = $('filter-status').value;
+  const genre = $('filter-genre').value;
+  if (s) params.set('search', s);
+  if (status === 'watched') params.set('watched', 'true');
+  if (status === 'watchlist') params.set('watched', 'false');
+  if (genre) params.set('genre', genre);
+
+  $('movies-tbody').innerHTML = '<tr><td colspan="10" class="loading">Loading…</td></tr>';
+  const data = await apiFetch('movies?' + params.toString());
+  if (data.error) {
+    $('movies-tbody').innerHTML = `<tr><td colspan="10" style="color:var(--accent2);padding:1rem">${data.error}</td></tr>`;
+    return;
+  }
+  allMovies = data;
+  renderTable();
+}
+
+function renderTable() {
+  const minRating = parseInt($('filter-rating').value) || 0;
+  let rows = [...allMovies];
+
+  if (minRating) {
+    rows = rows.filter(m => m.my_rating && m.my_rating >= minRating &&
+      (minRating >= 9 ? m.my_rating >= 9 :
+       minRating === 7 ? m.my_rating <= 8 :
+       minRating === 5 ? m.my_rating <= 6 :
+       m.my_rating <= 4));
+  }
+
+  rows.sort((a, b) => {
+    let av = a[sortCol] ?? '', bv = b[sortCol] ?? '';
+    if (typeof av === 'boolean') { av = av ? 1 : 0; bv = bv ? 1 : 0; }
+    if (av < bv) return -sortDir;
+    if (av > bv) return sortDir;
+    return 0;
+  });
+
+  if (!rows.length) {
+    $('movies-tbody').innerHTML = `
+      <tr><td colspan="10">
+        <div class="empty-state">
+          <div class="big">🎬</div>
+          <p>No movies yet. Add some from the first tab!</p>
+        </div>
+      </td></tr>`;
+    return;
+  }
+
+  $('movies-tbody').innerHTML = rows.map(m => {
+    const vibes = (m.vibes || '').split(',').filter(Boolean).map(v =>
+      `<span class="vibe-pill">${v.trim()}</span>`).join('');
+    const genres = (m.genre || '').split(',').slice(0,2).map(g =>
+      `<span class="genre-tag">${g.trim()}</span>`).join(' ');
+
+    return `<tr>
+      <td>${m.poster_url ? `<img class="poster-thumb" src="${m.poster_url}" alt="" loading="lazy"/>` : ''}</td>
+      <td><strong>${m.title}</strong>${m.director ? `<br><small style="color:var(--muted)">${m.director}</small>` : ''}</td>
+      <td>${m.year || '—'}</td>
+      <td>${genres || '—'}</td>
+      <td>${starsHtml(m.my_rating)}</td>
+      <td style="color:${m.imdb_rating && m.imdb_rating!='N/A'?'var(--accent)':'var(--muted)'}">
+        ${m.imdb_rating && m.imdb_rating!='N/A' ? '⭐ '+m.imdb_rating : '—'}</td>
+      <td>${vibes || '<span style="color:var(--muted)">—</span>'}</td>
+      <td>${m.watched
+        ? '<span class="watched-badge"></span> Watched'
+        : '<span class="unwatched-badge"></span> Watchlist'}</td>
+      <td style="color:var(--muted)">${m.watched_on ? m.watched_on.slice(0,10) : '—'}</td>
+      <td>
+        <div class="action-btns">
+          <button class="btn btn-ghost btn-sm" onclick="openEdit(${m.id})">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteMovie(${m.id},'${m.title.replace(/'/g,"\\'")}')">✕</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Sort ──────────────────────────────────────────────────────────────────────
+document.querySelectorAll('th[data-col]').forEach(th => {
+  th.addEventListener('click', () => {
+    if (sortCol === th.dataset.col) sortDir *= -1;
+    else { sortCol = th.dataset.col; sortDir = 1; }
+    document.querySelectorAll('th').forEach(t => t.classList.remove('sorted'));
+    th.classList.add('sorted');
+    th.querySelector('.sort-arrow').textContent = sortDir === 1 ? '↑' : '↓';
+    renderTable();
+  });
+});
+
+// ── Filters ───────────────────────────────────────────────────────────────────
+let filterTimer;
+$('filter-search').addEventListener('input', () => {
+  clearTimeout(filterTimer);
+  filterTimer = setTimeout(loadMovies, 350);
+});
+$('filter-status').addEventListener('change', loadMovies);
+$('filter-genre').addEventListener('change', loadMovies);
+$('filter-rating').addEventListener('change', renderTable);
+$('refresh-btn').addEventListener('click', loadMovies);
+
+// ── Delete ────────────────────────────────────────────────────────────────────
+async function deleteMovie(id, title) {
+  if (!confirm(`Remove "${title}" from your collection?`)) return;
+  await apiFetch('movies/' + id, { method: 'DELETE' });
+  toast('Removed: ' + title);
+  loadMovies();
+}
+
+// ── Edit modal ────────────────────────────────────────────────────────────────
+function openEdit(id) {
+  const m = allMovies.find(x => x.id === id);
+  if (!m) return;
+  $('edit-id').value = id;
+  if (m.my_rating) {
+    const r = document.querySelector(`input[name="edit-rating"][value="${m.my_rating}"]`);
+    if (r) r.checked = true;
+  } else {
+    document.querySelectorAll('input[name="edit-rating"]').forEach(r => r.checked = false);
+  }
+  setVibes($('edit-vibes-options'), m.vibes);
+  $('edit-review').value = m.review || '';
+  $('edit-watched').value = m.watched ? 'true' : 'false';
+  $('edit-watched-on').value = m.watched_on ? m.watched_on.slice(0,10) : '';
+  $('edit-modal').classList.add('open');
+}
+
+$('close-modal-btn').addEventListener('click', () => $('edit-modal').classList.remove('open'));
+$('edit-modal').addEventListener('click', e => { if(e.target===$('edit-modal')) $('edit-modal').classList.remove('open'); });
+
+$('save-edit-btn').addEventListener('click', async () => {
+  const id = $('edit-id').value;
+  const ratingEl = document.querySelector('input[name="edit-rating"]:checked');
+  const watched = $('edit-watched').value === 'true';
+  const body = {
+    my_rating:  ratingEl ? parseInt(ratingEl.value) : null,
+    vibes:      getVibes($('edit-vibes-options')),
+    review:     $('edit-review').value.trim(),
+    watched,
+    watched_on: $('edit-watched-on').value || null,
+  };
+  const result = await apiFetch('movies/' + id, { method: 'PATCH', body: JSON.stringify(body) });
+  if (result.error) { toast('Error: ' + result.error); return; }
+  toast('Updated!');
+  $('edit-modal').classList.remove('open');
+  loadMovies();
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+// Pre-load movies count for collection tab badge (optional future)
+</script>
+</body>
+</html>
