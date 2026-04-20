@@ -2,9 +2,6 @@ apiVersion: deploy.cloud.google.com/v1
 kind: Target
 metadata:
   name: dev
-  annotations: {}
-  labels: {}
-description: dev
+description: development cluster
 gke:
-  cluster: projects/prj-poc-001/locations/us-central1-c/clusters/cluster-1
-
+  cluster: projects/cloud-computing-project-ali/locations/us-central1/clusters/dev-cluster

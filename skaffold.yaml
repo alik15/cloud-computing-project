@@ -1,13 +1,12 @@
-apiVersion: skaffold/v4beta9
+apiVersion: skaffold/v4beta7
 kind: Config
-build:
-  tagPolicy:
-    gitCommit: {}
-  local: {}
+metadata:
+  name: cloud-computing-project
 manifests:
   rawYaml:
-    - ./kubernetes/*
+    - k8s/namespace.yaml
+    - k8s/postgres/*.yaml
+    - k8s/connector/*.yaml
+    - k8s/frontend/*.yaml
 deploy:
   kubectl: {}
-  logs:
-    prefix: container

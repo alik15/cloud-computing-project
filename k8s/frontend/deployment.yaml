@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: alikhalid15/frontend:v2   # <-- replace alikhalid15
+          image: frontend   # <-- replace alikhalid15
           imagePullPolicy: Always
           ports:
             - containerPort: 8000

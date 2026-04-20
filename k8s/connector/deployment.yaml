@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: connector
-          image: alikhalid15/connector:v1   # <-- replace alikhalid15
+          image: connector   # <-- replace alikhalid15
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
