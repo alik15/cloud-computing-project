@@ -1,19 +1,19 @@
 steps:
 # 1. Build Connector
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/gke-repo/connector:$SHORT_SHA', './connector' ]
+  args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/gke-repo/connector:$BUILD_ID', './connector' ]
   id: 'Build Connector'
 
 # 2. Build Frontend
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/gke-repo/frontend:$SHORT_SHA', './frontend' ]
+  args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/gke-repo/frontend:$BUILD_ID', './frontend' ]
   id: 'Build Frontend'
 
 # 3. Push Images
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/gke-repo/connector:$SHORT_SHA']
+  args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/gke-repo/connector:$BUILD_ID']
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/gke-repo/frontend:$SHORT_SHA']
+  args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/gke-repo/frontend:$BUILD_ID']
 
 # 4. Trigger Cloud Deploy
 - name: 'google/cloud-sdk:latest'
@@ -25,8 +25,8 @@ steps:
     gcloud deploy apply --file deploy/pipeline.yaml --region=us-central1
     gcloud deploy apply --file deploy/dev.yaml --region=us-central1
     
-    gcloud deploy releases create 'rel-${SHORT_SHA}' \
+    gcloud deploy releases create 'rel-${BUILD_ID}' \
       --delivery-pipeline=gke-cicd-pipeline \
       --region=us-central1 \
       --skaffold-file=skaffold.yaml \
-      --images=connector=us-central1-docker.pkg.dev/$PROJECT_ID/gke-repo/connector:$SHORT_SHA,frontend=us-central1-docker.pkg.dev/$PROJECT_ID/gke-repo/frontend:$SHORT_SHA
+      --images=connector=us-central1-docker.pkg.dev/$PROJECT_ID/gke-repo/connector:$BUILD_ID,frontend=us-central1-docker.pkg.dev/$PROJECT_ID/gke-repo/frontend:$BUILD_ID
