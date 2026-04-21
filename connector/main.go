@@ -116,6 +116,59 @@ func getUserID(r *http.Request) string {
 	return r.Header.Get("X-User-ID")
 }
 
+// ── Input validation ──────────────────────────────────────────────────────────
+
+const (
+	maxTitleLen  = 200
+	maxReviewLen = 2000
+	maxVibesLen  = 500
+	maxGenreLen  = 200
+)
+
+type ValidationError struct {
+	Field   string `json:"field"`
+	Message string `json:"message"`
+}
+
+func validateMovie(m *Movie) []ValidationError {
+	var errs []ValidationError
+
+	if strings.TrimSpace(m.Title) == "" {
+		errs = append(errs, ValidationError{"title", "title is required"})
+	} else if len(m.Title) > maxTitleLen {
+		errs = append(errs, ValidationError{"title", fmt.Sprintf("title must be under %d characters", maxTitleLen)})
+	}
+
+	if len(m.Review) > maxReviewLen {
+		errs = append(errs, ValidationError{"review", fmt.Sprintf("review must be under %d characters", maxReviewLen)})
+	}
+
+	if len(m.Vibes) > maxVibesLen {
+		errs = append(errs, ValidationError{"vibes", fmt.Sprintf("vibes must be under %d characters", maxVibesLen)})
+	}
+
+	if len(m.Genre) > maxGenreLen {
+		errs = append(errs, ValidationError{"genre", fmt.Sprintf("genre must be under %d characters", maxGenreLen)})
+	}
+
+	if m.MyRating != nil && (*m.MyRating < 1 || *m.MyRating > 10) {
+		errs = append(errs, ValidationError{"my_rating", "rating must be between 1 and 10"})
+	}
+
+	if m.WatchedOn != "" {
+		if _, err := time.Parse("2006-01-02", m.WatchedOn); err != nil {
+			errs = append(errs, ValidationError{"watched_on", "date must be in YYYY-MM-DD format"})
+		}
+	}
+
+	return errs
+}
+
+func sanitizeString(s string) string {
+	// Trim leading/trailing whitespace
+	return strings.TrimSpace(s)
+}
+
 // ── OMDB proxy ────────────────────────────────────────────────────────────────
 
 func omdbSearch(w http.ResponseWriter, r *http.Request) {
@@ -247,8 +300,19 @@ func moviesHandler(db *sql.DB) http.HandlerFunc {
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 				writeErr(w, http.StatusBadRequest, "invalid JSON"); return
 			}
-			if strings.TrimSpace(body.Title) == "" {
-				writeErr(w, http.StatusBadRequest, "title required"); return
+			// Sanitize inputs
+			body.Title   = sanitizeString(body.Title)
+			body.Review  = sanitizeString(body.Review)
+			body.Vibes   = sanitizeString(body.Vibes)
+			body.Genre   = sanitizeString(body.Genre)
+			body.Director = sanitizeString(body.Director)
+
+			// Validate
+			if errs := validateMovie(&body); len(errs) > 0 {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(map[string]any{"errors": errs})
+				return
 			}
 			var watchedOn *string
 			if body.WatchedOn != "" {

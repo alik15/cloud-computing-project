@@ -656,6 +656,14 @@ let sortDir = -1;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
+
+// XSS protection — always use esc() when inserting user data into innerHTML
+function esc(str) {
+  const d = document.createElement('div');
+  d.textContent = str || '';
+  return d.innerHTML;
+}
+
 const toast = (msg, dur=3000) => {
   const t = $('toast');
   t.textContent = msg;
@@ -739,11 +747,11 @@ async function doSearch() {
     const card = document.createElement('div');
     card.className = 'omdb-card';
     card.innerHTML = `
-      <img src="${m.Poster !== 'N/A' ? m.Poster : ''}" alt="${m.Title}" loading="lazy"
+      <img src="${esc(m.Poster !== 'N/A' ? m.Poster : '')}" alt="${esc(m.Title)}" loading="lazy"
            onerror="this.style.background='var(--muted2)'"/>
       <div class="omdb-card-info">
-        <div class="omdb-card-title">${m.Title}</div>
-        <div class="omdb-card-year">${m.Year}</div>
+        <div class="omdb-card-title">${esc(m.Title)}</div>
+        <div class="omdb-card-year">${esc(m.Year)}</div>
       </div>`;
     card.addEventListener('click', () => selectMovie(m.imdbID, card));
     container.appendChild(card);
@@ -763,8 +771,8 @@ async function selectMovie(imdbID, cardEl) {
   $('sel-poster').src = data.Poster !== 'N/A' ? data.Poster : '';
   $('sel-title').textContent = data.Title;
   $('sel-meta').innerHTML = `
-    <span class="imdb-badge">IMDB</span>${data.imdbRating}/10 &nbsp;·&nbsp;
-    ${data.Year} &nbsp;·&nbsp; ${data.Genre} &nbsp;·&nbsp; Dir. ${data.Director}`;
+    <span class="imdb-badge">IMDB</span>${esc(data.imdbRating)}/10 &nbsp;·&nbsp;
+    ${esc(data.Year)} &nbsp;·&nbsp; ${esc(data.Genre)} &nbsp;·&nbsp; Dir. ${esc(data.Director)}`;
 
   // reset form
   document.querySelectorAll('#add-form input[type=radio]').forEach(r => r.checked = false);
