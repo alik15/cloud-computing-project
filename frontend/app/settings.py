@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -8,17 +9,34 @@ DEBUG = os.environ.get("DJANGO_DEBUG", "True") == "True"
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "*").split(",")
 APPEND_SLASH = False
 
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "HOST": os.environ.get("DB_HOST", "postgres-svc"),
+        "PORT": os.environ.get("DB_PORT", "5432"),
+        "NAME": "django",
+        "USER": os.environ.get("POSTGRES_USER", "appuser"),
+        "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "apppassword"),
+    }
+}
 INSTALLED_APPS = [
     "django.contrib.staticfiles",
+    "django.contrib.contenttypes",
+    "django.contrib.auth",
+    "django.contrib.sessions",
+    "django.contrib.messages",
     "app",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
 ]
-
 
 ROOT_URLCONF = "app.urls"
 
@@ -30,6 +48,8 @@ TEMPLATES = [
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
@@ -37,11 +57,29 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "app.wsgi.application"
 
+if 'test' in sys.argv:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": ":memory:",
+        }
+    }
+
+# ── Sessions ──────────────────────────────────────────────────────────────────
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
+SESSION_COOKIE_AGE = 86400  # 24 hours
+
+# ── Auth ──────────────────────────────────────────────────────────────────────
+LOGIN_URL          = "/login"
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/login"
+
+# ── Static files ──────────────────────────────────────────────────────────────
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Go connector base URL — injected via ConfigMap
+# ── Go connector ──────────────────────────────────────────────────────────────
 CONNECTOR_URL = os.environ.get("CONNECTOR_URL", "http://localhost:8080")

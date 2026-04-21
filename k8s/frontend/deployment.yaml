@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: frontend   # <-- replace alikhalid15
+          image: alikhalid15/frontend:v8
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
@@ -26,17 +26,19 @@ spec:
                 name: frontend-config
             - secretRef:
                 name: frontend-secret
+            - secretRef:
+                name: postgres-secret
           readinessProbe:
             httpGet:
-              path: /
+              path: /health
               port: 8000
-            initialDelaySeconds: 10
+            initialDelaySeconds: 15
             periodSeconds: 5
           livenessProbe:
             httpGet:
-              path: /
+              path: /health
               port: 8000
-            initialDelaySeconds: 20
+            initialDelaySeconds: 30
             periodSeconds: 10
           resources:
             requests:
@@ -58,4 +60,4 @@ spec:
     - port: 80
       targetPort: 8000
       nodePort: 30080
-  type: LoadBalancer 
+  type: NodePort

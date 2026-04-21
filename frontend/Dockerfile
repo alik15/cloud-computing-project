@@ -10,12 +10,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Collect static files
 RUN python manage.py collectstatic --noinput
 
+
 RUN addgroup --system app && adduser --system --ingroup app app
+RUN chmod +x /app/entrypoint.sh
+
 USER app
 
 EXPOSE 8000
 
-CMD ["gunicorn", "app.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2"]
+ENTRYPOINT ["/app/entrypoint.sh"]

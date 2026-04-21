@@ -432,6 +432,10 @@
     <button class="tab-btn active" data-tab="add">＋ Add Movie</button>
     <button class="tab-btn" data-tab="watched">My Collection</button>
   </nav>
+  <div style="display:flex;align-items:center;gap:1rem;padding-bottom:1rem">
+    <span style="font-size:0.78rem;color:var(--muted)">{{ user.username }}</span>
+    <a href="/logout" style="background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'DM Sans',sans-serif;font-size:0.75rem;padding:0.35rem 0.9rem;border-radius:4px;text-decoration:none;letter-spacing:0.08em">Sign out</a>
+  </div>
 </header>
 
 <main>
@@ -670,17 +674,11 @@ function getCsrf() {
   return c ? c.split('=')[1] : '';
 }
 
-// REPLACE with:
 async function apiFetch(path, opts={}) {
   const res = await fetch('/api/' + path, {
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
     ...opts
   });
-  if (!res.ok) {
-    const text = await res.text();
-    console.error('apiFetch error:', res.status, text);
-    throw new Error(text);
-  }
   return res.json();
 }
 
@@ -780,12 +778,8 @@ async function selectMovie(imdbID, cardEl) {
 }
 
 // ── Save movie ────────────────────────────────────────────────────────────────
-
 $('save-movie-btn').addEventListener('click', async () => {
   if (!selectedMovie) { toast('Select a movie first'); return; }
-  if (!selectedMovie.Title) { toast('Error: movie detail not loaded yet, click the poster again'); return; }
-
-fetch('/api/omdb/detail?id=tt0111161').then(r=>r.text()).then(console.log)
 
   const ratingEl = document.querySelector('input[name="rating"]:checked');
   const watched = $('watched-select').value === 'watched';

@@ -49,6 +49,7 @@ func initSchema(db *sql.DB) {
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS movies (
 			id            SERIAL PRIMARY KEY,
+			user_id       TEXT        NOT NULL DEFAULT '',
 			imdb_id       TEXT,
 			title         TEXT        NOT NULL,
 			year          TEXT,
@@ -62,7 +63,8 @@ func initSchema(db *sql.DB) {
 			watched       BOOLEAN     NOT NULL DEFAULT FALSE,
 			watched_on    DATE,
 			added_on      TIMESTAMPTZ NOT NULL DEFAULT NOW()
-		)
+		);
+		ALTER TABLE movies ADD COLUMN IF NOT EXISTS user_id TEXT NOT NULL DEFAULT '';
 	`)
 	if err != nil {
 		log.Fatalf("Schema init failed: %v", err)
@@ -74,6 +76,7 @@ func initSchema(db *sql.DB) {
 
 type Movie struct {
 	ID         int    `json:"id"`
+	UserID     string `json:"user_id"`
 	ImdbID     string `json:"imdb_id"`
 	Title      string `json:"title"`
 	Year       string `json:"year"`
@@ -107,6 +110,10 @@ func getEnv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func getUserID(r *http.Request) string {
+	return r.Header.Get("X-User-ID")
 }
 
 // ── OMDB proxy ────────────────────────────────────────────────────────────────
@@ -170,7 +177,7 @@ func scanMovie(row interface{ Scan(...any) error }) (Movie, error) {
 	var myRating sql.NullInt64
 	var watchedOn sql.NullString
 	err := row.Scan(
-		&m.ID, &m.ImdbID, &m.Title, &m.Year, &m.Genre, &m.Director,
+		&m.ID, &m.UserID, &m.ImdbID, &m.Title, &m.Year, &m.Genre, &m.Director,
 		&m.PosterURL, &m.ImdbRating, &myRating, &m.Review, &m.Vibes,
 		&m.Watched, &watchedOn, &m.AddedOn,
 	)
@@ -186,18 +193,23 @@ func scanMovie(row interface{ Scan(...any) error }) (Movie, error) {
 
 func moviesHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		userID := getUserID(r)
+		if userID == "" {
+			writeErr(w, http.StatusUnauthorized, "X-User-ID header required")
+			return
+		}
 
 		if r.Method == http.MethodGet {
 			watched := r.URL.Query().Get("watched")
 			genre := r.URL.Query().Get("genre")
 			search := r.URL.Query().Get("search")
 
-			query := `SELECT id, imdb_id, title, year, genre, director,
+			query := `SELECT id, user_id, imdb_id, title, year, genre, director,
 				poster_url, imdb_rating, my_rating, review, vibes,
 				watched, watched_on::text, added_on::text
-				FROM movies WHERE 1=1`
-			var args []any
-			i := 1
+				FROM movies WHERE user_id=$1`
+			args := []any{userID}
+			i := 2
 
 			if watched == "true" {
 				query += fmt.Sprintf(" AND watched=$%d", i); args = append(args, true); i++
@@ -247,17 +259,17 @@ func moviesHandler(db *sql.DB) http.HandlerFunc {
 			var watchedOnOut sql.NullString
 			err := db.QueryRow(`
 				INSERT INTO movies
-					(imdb_id,title,year,genre,director,poster_url,
+					(user_id,imdb_id,title,year,genre,director,poster_url,
 					 imdb_rating,my_rating,review,vibes,watched,watched_on)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-				RETURNING id,imdb_id,title,year,genre,director,
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+				RETURNING id,user_id,imdb_id,title,year,genre,director,
 					poster_url,imdb_rating,my_rating,review,vibes,
 					watched,watched_on::text,added_on::text`,
-				body.ImdbID, body.Title, body.Year, body.Genre, body.Director,
+				userID, body.ImdbID, body.Title, body.Year, body.Genre, body.Director,
 				body.PosterURL, body.ImdbRating, body.MyRating, body.Review,
 				body.Vibes, body.Watched, watchedOn,
 			).Scan(
-				&m.ID, &m.ImdbID, &m.Title, &m.Year, &m.Genre, &m.Director,
+				&m.ID, &m.UserID, &m.ImdbID, &m.Title, &m.Year, &m.Genre, &m.Director,
 				&m.PosterURL, &m.ImdbRating, &myRating, &m.Review, &m.Vibes,
 				&m.Watched, &watchedOnOut, &m.AddedOn,
 			)
@@ -276,6 +288,12 @@ func moviesHandler(db *sql.DB) http.HandlerFunc {
 
 func movieByIDHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		userID := getUserID(r)
+		if userID == "" {
+			writeErr(w, http.StatusUnauthorized, "X-User-ID header required")
+			return
+		}
+
 		idStr := strings.TrimPrefix(r.URL.Path, "/movies/")
 		id, err := strconv.Atoi(idStr)
 		if err != nil {
@@ -299,13 +317,13 @@ func movieByIDHandler(db *sql.DB) http.HandlerFunc {
 			if len(setClauses) == 0 {
 				writeErr(w, http.StatusBadRequest, "no fields to update"); return
 			}
-			args = append(args, id)
+			args = append(args, id, userID)
 			row := db.QueryRow(fmt.Sprintf(
-				`UPDATE movies SET %s WHERE id=$%d
-				 RETURNING id,imdb_id,title,year,genre,director,
+				`UPDATE movies SET %s WHERE id=$%d AND user_id=$%d
+				 RETURNING id,user_id,imdb_id,title,year,genre,director,
 				   poster_url,imdb_rating,my_rating,review,vibes,
 				   watched,watched_on::text,added_on::text`,
-				strings.Join(setClauses, ","), i,
+				strings.Join(setClauses, ","), i, i+1,
 			), args...)
 			m, err := scanMovie(row)
 			if err != nil {
@@ -316,7 +334,7 @@ func movieByIDHandler(db *sql.DB) http.HandlerFunc {
 		}
 
 		if r.Method == http.MethodDelete {
-			_, err := db.Exec(`DELETE FROM movies WHERE id=$1`, id)
+			_, err := db.Exec(`DELETE FROM movies WHERE id=$1 AND user_id=$2`, id, userID)
 			if err != nil {
 				writeErr(w, http.StatusInternalServerError, err.Error()); return
 			}

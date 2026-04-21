@@ -8,14 +8,15 @@ A 3-pod Kubernetes application stack:
 
 ## To Do List
 - [ ] Input sanitization for forms
-- [ ] Google accounts
+- [x] User accounts
 - [ ] Scaling 
 - [ ] Automatic deployment to production using canary once approved from the front end
 - [ ] OMDB secret on cli
 - [ ] Enable logging on application
-- [ ] Admin Page
-- [ ] Keycloak
 - [ ] Logging inside pods
+- [ ] Define Limits and requests of each pod considering the size of the cluster
+- [x] Local Tests
+- [ ] GitHub Automatic CI/CD
 
 ## Structure
 
@@ -109,4 +110,9 @@ kubectl delete namespace appns
 
 
 
+## Tests
+### Go
+cd connector && go test -v ./...
 
+### Django
+cd frontend && python manage.py test app --verbosity=2

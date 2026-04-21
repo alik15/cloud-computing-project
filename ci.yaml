@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+
+  test-connector:
+    name: Go Connector Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Download dependencies
+        working-directory: connector
+        run: go mod tidy
+
+      - name: Run tests
+        working-directory: connector
+        run: go test -v ./...
+
+  test-frontend:
+    name: Django Frontend Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        working-directory: frontend
+        env:
+          DJANGO_SECRET_KEY: test-secret-key
+          DJANGO_DEBUG: "True"
+          CONNECTOR_URL: http://localhost:8080
+        run: python manage.py test app --verbosity=2
