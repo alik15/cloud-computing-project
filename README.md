@@ -94,3 +94,14 @@ kubectl delete namespace appns
 | PostgreSQL  | postgres-svc.appns.svc.cluster.local | 5432 |
 | Go Connector| connector-svc.appns.svc.cluster.local | 8080 |
 | Django      | frontend-svc.appns.svc.cluster.local  | 8000 |
+
+
+
+## To Do List
+[] Input sanitization for forms
+[] Google accounts
+[] Scaling 
+[] Automatic deployment to production using canary once approved from the front end
+[] OMDB secret on cli
+[] Enable logging on application
+
