@@ -4,4 +4,4 @@ metadata:
   name: dev
 description: development cluster
 gke:
-  cluster: projects/cloud-computing-project-ali/locations/us-central1/clusters/dev-cluster
+  cluster: projects/cloud-computing-project-ali/locations/us-central1-a/clusters/dev-cluster
