@@ -159,7 +159,7 @@ gcloud projects add-iam-policy-binding cloud-computing-project-ali \
   --role="roles/artifactregistry.writer"
 
 # 4.5
-<add line to create djano db>
+kubectl exec -n appns deployment/postgres -- psql -U appuser -d appdb -c "CREATE DATABASE django;"
 # 5. Push to trigger pipeline
 git add .
 git commit -m "redeploy"
