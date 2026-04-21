@@ -1,4 +1,4 @@
-# K8s 3-Pod App
+# Reel Keeper
 
 A 3-pod Kubernetes application stack:
 - **PostgreSQL** — database
@@ -98,10 +98,10 @@ kubectl delete namespace appns
 
 
 ## To Do List
-[] Input sanitization for forms
-[] Google accounts
-[] Scaling 
-[] Automatic deployment to production using canary once approved from the front end
-[] OMDB secret on cli
-[] Enable logging on application
+- [] Input sanitization for forms
+- [] Google accounts
+- [] Scaling 
+- [] Automatic deployment to production using canary once approved from the front end
+- [] OMDB secret on cli
+- [] Enable logging on application
 
