@@ -7,10 +7,9 @@ A 3-pod Kubernetes application stack:
 
 
 ## To Do List
-- [ ] Input sanitization for forms
+- [x] Input sanitization for forms
 - [x] User accounts
 - [x] Scaling 
-- [ ] Automatic deployment to production using canary once approved from the front end
 - [x] Enable logging on application
 - [x] Define Limits and requests of each pod considering the size of the cluster
 - [x] Local Tests
