@@ -9,14 +9,12 @@ A 3-pod Kubernetes application stack:
 ## To Do List
 - [ ] Input sanitization for forms
 - [x] User accounts
-- [ ] Scaling 
+- [x] Scaling 
 - [ ] Automatic deployment to production using canary once approved from the front end
-- [ ] OMDB secret on cli
-- [ ] Enable logging on application
-- [ ] Logging inside pods
-- [ ] Define Limits and requests of each pod considering the size of the cluster
+- [x] Enable logging on application
+- [x] Define Limits and requests of each pod considering the size of the cluster
 - [x] Local Tests
-- [ ] GitHub Automatic CI/CD
+- [x] GitHub Automatic CI/CD
 
 ## Structure
 
