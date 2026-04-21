@@ -13,6 +13,9 @@ A 3-pod Kubernetes application stack:
 - [ ] Automatic deployment to production using canary once approved from the front end
 - [ ] OMDB secret on cli
 - [ ] Enable logging on application
+- [ ] Admin Page
+- [ ] Keycloak
+- [ ] Logging inside pods
 
 ## Structure
 
