@@ -118,10 +118,10 @@ cd frontend && python manage.py test app --verbosity=2
 
 ## Steps for Deployment on Gcloud
 ```
-1. Set project
+# 1. Set project
 gcloud config set project cloud-computing-project-ali
 
-2. Create clusters
+# 2. Create clusters
 gcloud container clusters create dev-cluster \
   --zone=us-central1-a \
   --num-nodes=2 \
@@ -134,12 +134,12 @@ gcloud container clusters create prod-cluster \
   --machine-type=e2-small \
   --disk-size=20
 
-3. Create Artifact Registry
+# 3. Create Artifact Registry
 gcloud artifacts repositories create gke-repo \
   --repository-format=docker \
   --location=us-central1
 
-4. Grant Cloud Build permissions
+# 4. Grant Cloud Build permissions
 PROJECT_NUMBER=$(gcloud projects describe cloud-computing-project-ali --format='value(projectNumber)')
 
 gcloud projects add-iam-policy-binding cloud-computing-project-ali \
@@ -158,26 +158,28 @@ gcloud projects add-iam-policy-binding cloud-computing-project-ali \
   --member="serviceAccount:$PROJECT_NUMBER@cloudbuild.gserviceaccount.com" \
   --role="roles/artifactregistry.writer"
 
-5. Push to trigger pipeline
+# 4.5
+<add line to create djano db>
+# 5. Push to trigger pipeline
 git add .
 git commit -m "redeploy"
 git push origin main
 
-6. Watch build logs
+# 6. Watch build logs
 gcloud builds log $(gcloud builds list --limit=1 --format='value(id)') --stream
 
-7. Point kubectl at dev cluster
+# 7. Point kubectl at dev cluster
 gcloud container clusters get-credentials dev-cluster \
   --zone=us-central1-a \
   --project=cloud-computing-project-ali
 
-8. Watch pods come up
+# 8. Watch pods come up
 kubectl get pods -n appns -w
 
-9. Patch frontend to LoadBalancer
+# 9. Patch frontend to LoadBalancer
 kubectl patch svc frontend-svc -n appns \
   -p '{"spec": {"type": "LoadBalancer"}}'
 
-10. Get external IP
+# 10. Get external IP
 kubectl get svc frontend-svc -n appns -w
 ```
