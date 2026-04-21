@@ -5,6 +5,15 @@ A 3-pod Kubernetes application stack:
 - **Go Connector** — REST API / DB middleware
 - **Django Frontend** — HTML UI
 
+
+## To Do List
+- [ ] Input sanitization for forms
+- [ ] Google accounts
+- [ ] Scaling 
+- [ ] Automatic deployment to production using canary once approved from the front end
+- [ ] OMDB secret on cli
+- [ ] Enable logging on application
+
 ## Structure
 
 ```
@@ -97,11 +106,4 @@ kubectl delete namespace appns
 
 
 
-## To Do List
-- [] Input sanitization for forms
-- [] Google accounts
-- [] Scaling 
-- [] Automatic deployment to production using canary once approved from the front end
-- [] OMDB secret on cli
-- [] Enable logging on application
 
