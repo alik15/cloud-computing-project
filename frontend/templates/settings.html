@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Reelkeeper — Settings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:#0a0a0f;--surface:#12121a;--card:#1a1a26;--border:#2a2a3d;
+      --accent:#e8b86d;--text:#e8e6e0;--muted:#6b6880;--error:#c0392b;--green:#2ecc71;
+      --radius:6px;
+    }
+    body { background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-weight:300;min-height:100vh; }
+    body::before {
+      content:'';position:fixed;inset:0;pointer-events:none;
+      background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      opacity:0.4;
+    }
+    header {
+      position:relative;z-index:10;
+      padding:2rem 2.5rem 1rem;
+      border-bottom:1px solid var(--border);
+      display:flex;align-items:center;justify-content:space-between;
+    }
+    .logo { font-family:'Playfair Display',serif;font-size:1.9rem;color:var(--accent); }
+    .logo span { font-style:italic;color:var(--text); }
+    .nav-links { display:flex;gap:1rem;align-items:center; }
+    .nav-links a {
+      font-size:0.8rem;color:var(--muted);text-decoration:none;
+      letter-spacing:0.08em;padding:0.4rem 0.8rem;border-radius:var(--radius);
+      border:1px solid transparent;transition:all 0.2s;
+    }
+    .nav-links a:hover { color:var(--text);border-color:var(--border); }
+    .nav-links a.active { color:var(--accent);border-color:var(--accent); }
+
+    main { max-width:700px;margin:0 auto;padding:2.5rem 2rem;position:relative;z-index:1; }
+
+    h1 { font-family:'Playfair Display',serif;font-size:1.6rem;margin-bottom:2rem; }
+    h1 em { font-style:italic;color:var(--accent); }
+
+    .card {
+      background:var(--card);border:1px solid var(--border);
+      border-radius:var(--radius);padding:1.75rem;margin-bottom:1.5rem;
+    }
+    .card h2 {
+      font-size:0.75rem;font-weight:500;letter-spacing:0.12em;
+      text-transform:uppercase;color:var(--muted);margin-bottom:1.25rem;
+    }
+
+    .form-group { display:flex;flex-direction:column;gap:0.4rem;margin-bottom:1rem; }
+    label { font-size:0.72rem;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted); }
+    input[type=text], input[type=password] {
+      background:var(--surface);border:1px solid var(--border);
+      color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.9rem;
+      padding:0.65rem 0.9rem;border-radius:var(--radius);outline:none;
+      transition:border-color 0.2s;width:100%;
+    }
+    input:focus { border-color:var(--accent); }
+
+    .services-grid {
+      display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:0.75rem;
+    }
+    .service-check { display:none; }
+    .service-label {
+      display:flex;align-items:center;gap:0.5rem;
+      background:var(--surface);border:1px solid var(--border);
+      border-radius:var(--radius);padding:0.6rem 0.9rem;
+      cursor:pointer;font-size:0.82rem;color:var(--muted);
+      transition:all 0.15s;user-select:none;
+    }
+    .service-check:checked + .service-label {
+      background:rgba(232,184,109,0.1);border-color:var(--accent);color:var(--accent);
+    }
+    .service-dot {
+      width:8px;height:8px;border-radius:50%;
+      background:var(--muted);flex-shrink:0;transition:background 0.15s;
+    }
+    .service-check:checked + .service-label .service-dot { background:var(--accent); }
+
+    .btn {
+      background:var(--accent);color:#0a0a0f;border:none;cursor:pointer;
+      font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:500;
+      letter-spacing:0.08em;text-transform:uppercase;
+      padding:0.65rem 1.4rem;border-radius:var(--radius);transition:opacity 0.2s;
+    }
+    .btn:hover { opacity:0.88; }
+    .btn-ghost {
+      background:transparent;border:1px solid var(--border);color:var(--muted);
+    }
+    .btn-ghost:hover { border-color:var(--text);color:var(--text); }
+
+    .error-msg {
+      background:rgba(192,57,43,0.15);border:1px solid var(--error);
+      color:#fc8181;font-size:0.82rem;padding:0.65rem 1rem;
+      border-radius:4px;margin-bottom:1rem;
+    }
+    .form-actions { display:flex;gap:0.75rem;margin-top:1rem; }
+  </style>
+</head>
+<body>
+<header>
+  <div class="logo">Reel<span>keeper</span></div>
+  <nav class="nav-links">
+    <a href="/">← Back to App</a>
+    <a href="/settings" class="active">Settings</a>
+    <a href="/logout">Sign out</a>
+  </nav>
+</header>
+
+<main>
+  <h1>Your <em>Settings</em></h1>
+
+  <!-- Profile & Streaming -->
+  <div class="card">
+    <h2>Profile &amp; Streaming Services</h2>
+    {% if messages %}
+      {% for msg in messages %}<div class="error-msg">{{ msg }}</div>{% endfor %}
+    {% endif %}
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="profile"/>
+
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" name="username" value="{{ user.username }}"/>
+      </div>
+
+      <div class="form-group">
+        <label>Location</label>
+        <input type="text" name="location" value="{{ profile.location }}" placeholder="e.g. Pakistan"/>
+      </div>
+
+      <div class="form-group">
+        <label style="margin-bottom:0.6rem;display:block">Streaming Services</label>
+        <div class="services-grid">
+          {% for key, name in all_services %}
+          <div>
+            <input class="service-check" type="checkbox" name="services"
+                   id="svc_{{ key }}" value="{{ key }}"
+                   {% if key in profile.services %}checked{% endif %}/>
+            <label class="service-label" for="svc_{{ key }}">
+              <span class="service-dot"></span>{{ name }}
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn">Save Profile</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Change Password -->
+  <div class="card">
+    <h2>Change Password</h2>
+    {% if password_form.errors %}
+    <div class="error-msg">
+      {% for field in password_form %}
+        {% for error in field.errors %}{{ error }}<br>{% endfor %}
+      {% endfor %}
+    </div>
+    {% endif %}
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="password"/>
+      <div class="form-group">
+        <label>Current Password</label>
+        <input type="password" name="old_password"/>
+      </div>
+      <div class="form-group">
+        <label>New Password</label>
+        <input type="password" name="new_password1"/>
+      </div>
+      <div class="form-group">
+        <label>Confirm New Password</label>
+        <input type="password" name="new_password2"/>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn">Change Password</button>
+      </div>
+    </form>
+  </div>
+</main>
+</body>
+</html>

@@ -65,6 +65,7 @@ func initSchema(db *sql.DB) {
 			added_on      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		);
 		ALTER TABLE movies ADD COLUMN IF NOT EXISTS user_id TEXT NOT NULL DEFAULT '';
+		ALTER TABLE movies ADD COLUMN IF NOT EXISTS streaming_services JSONB NOT NULL DEFAULT '[]';
 	`)
 	if err != nil {
 		log.Fatalf("Schema init failed: %v", err)
@@ -87,9 +88,10 @@ type Movie struct {
 	MyRating   *int   `json:"my_rating"`
 	Review     string `json:"review"`
 	Vibes      string `json:"vibes"`
-	Watched    bool   `json:"watched"`
-	WatchedOn  string `json:"watched_on"`
-	AddedOn    string `json:"added_on"`
+	Watched           bool     `json:"watched"`
+	WatchedOn         string   `json:"watched_on"`
+	StreamingServices []string `json:"streaming_services"`
+	AddedOn           string   `json:"added_on"`
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -114,59 +116,6 @@ func getEnv(key, fallback string) string {
 
 func getUserID(r *http.Request) string {
 	return r.Header.Get("X-User-ID")
-}
-
-// ── Input validation ──────────────────────────────────────────────────────────
-
-const (
-	maxTitleLen  = 200
-	maxReviewLen = 2000
-	maxVibesLen  = 500
-	maxGenreLen  = 200
-)
-
-type ValidationError struct {
-	Field   string `json:"field"`
-	Message string `json:"message"`
-}
-
-func validateMovie(m *Movie) []ValidationError {
-	var errs []ValidationError
-
-	if strings.TrimSpace(m.Title) == "" {
-		errs = append(errs, ValidationError{"title", "title is required"})
-	} else if len(m.Title) > maxTitleLen {
-		errs = append(errs, ValidationError{"title", fmt.Sprintf("title must be under %d characters", maxTitleLen)})
-	}
-
-	if len(m.Review) > maxReviewLen {
-		errs = append(errs, ValidationError{"review", fmt.Sprintf("review must be under %d characters", maxReviewLen)})
-	}
-
-	if len(m.Vibes) > maxVibesLen {
-		errs = append(errs, ValidationError{"vibes", fmt.Sprintf("vibes must be under %d characters", maxVibesLen)})
-	}
-
-	if len(m.Genre) > maxGenreLen {
-		errs = append(errs, ValidationError{"genre", fmt.Sprintf("genre must be under %d characters", maxGenreLen)})
-	}
-
-	if m.MyRating != nil && (*m.MyRating < 1 || *m.MyRating > 10) {
-		errs = append(errs, ValidationError{"my_rating", "rating must be between 1 and 10"})
-	}
-
-	if m.WatchedOn != "" {
-		if _, err := time.Parse("2006-01-02", m.WatchedOn); err != nil {
-			errs = append(errs, ValidationError{"watched_on", "date must be in YYYY-MM-DD format"})
-		}
-	}
-
-	return errs
-}
-
-func sanitizeString(s string) string {
-	// Trim leading/trailing whitespace
-	return strings.TrimSpace(s)
 }
 
 // ── OMDB proxy ────────────────────────────────────────────────────────────────
@@ -229,10 +178,11 @@ func scanMovie(row interface{ Scan(...any) error }) (Movie, error) {
 	var m Movie
 	var myRating sql.NullInt64
 	var watchedOn sql.NullString
+	var streamingJSON []byte
 	err := row.Scan(
 		&m.ID, &m.UserID, &m.ImdbID, &m.Title, &m.Year, &m.Genre, &m.Director,
 		&m.PosterURL, &m.ImdbRating, &myRating, &m.Review, &m.Vibes,
-		&m.Watched, &watchedOn, &m.AddedOn,
+		&m.Watched, &watchedOn, &streamingJSON, &m.AddedOn,
 	)
 	if myRating.Valid {
 		v := int(myRating.Int64)
@@ -240,6 +190,12 @@ func scanMovie(row interface{ Scan(...any) error }) (Movie, error) {
 	}
 	if watchedOn.Valid {
 		m.WatchedOn = watchedOn.String
+	}
+	if streamingJSON != nil {
+		json.Unmarshal(streamingJSON, &m.StreamingServices)
+	}
+	if m.StreamingServices == nil {
+		m.StreamingServices = []string{}
 	}
 	return m, err
 }
@@ -259,7 +215,7 @@ func moviesHandler(db *sql.DB) http.HandlerFunc {
 
 			query := `SELECT id, user_id, imdb_id, title, year, genre, director,
 				poster_url, imdb_rating, my_rating, review, vibes,
-				watched, watched_on::text, added_on::text
+				watched, watched_on::text, streaming_services, added_on::text
 				FROM movies WHERE user_id=$1`
 			args := []any{userID}
 			i := 2
@@ -300,42 +256,37 @@ func moviesHandler(db *sql.DB) http.HandlerFunc {
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 				writeErr(w, http.StatusBadRequest, "invalid JSON"); return
 			}
-			// Sanitize inputs
-			body.Title   = sanitizeString(body.Title)
-			body.Review  = sanitizeString(body.Review)
-			body.Vibes   = sanitizeString(body.Vibes)
-			body.Genre   = sanitizeString(body.Genre)
-			body.Director = sanitizeString(body.Director)
-
-			// Validate
-			if errs := validateMovie(&body); len(errs) > 0 {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(map[string]any{"errors": errs})
-				return
+			if strings.TrimSpace(body.Title) == "" {
+				writeErr(w, http.StatusBadRequest, "title required"); return
 			}
 			var watchedOn *string
 			if body.WatchedOn != "" {
 				watchedOn = &body.WatchedOn
 			}
+			streamingServices := body.StreamingServices
+			if streamingServices == nil {
+				streamingServices = []string{}
+			}
+			streamingJSON, _ := json.Marshal(streamingServices)
+
 			var m Movie
 			var myRating sql.NullInt64
 			var watchedOnOut sql.NullString
 			err := db.QueryRow(`
 				INSERT INTO movies
 					(user_id,imdb_id,title,year,genre,director,poster_url,
-					 imdb_rating,my_rating,review,vibes,watched,watched_on)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+					 imdb_rating,my_rating,review,vibes,watched,watched_on,streaming_services)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
 				RETURNING id,user_id,imdb_id,title,year,genre,director,
 					poster_url,imdb_rating,my_rating,review,vibes,
-					watched,watched_on::text,added_on::text`,
+					watched,watched_on::text,streaming_services,added_on::text`,
 				userID, body.ImdbID, body.Title, body.Year, body.Genre, body.Director,
 				body.PosterURL, body.ImdbRating, body.MyRating, body.Review,
-				body.Vibes, body.Watched, watchedOn,
+				body.Vibes, body.Watched, watchedOn, streamingJSON,
 			).Scan(
 				&m.ID, &m.UserID, &m.ImdbID, &m.Title, &m.Year, &m.Genre, &m.Director,
 				&m.PosterURL, &m.ImdbRating, &myRating, &m.Review, &m.Vibes,
-				&m.Watched, &watchedOnOut, &m.AddedOn,
+				&m.Watched, &watchedOnOut, &streamingJSON, &m.AddedOn,
 			)
 			if err != nil {
 				writeErr(w, http.StatusInternalServerError, err.Error()); return
@@ -372,7 +323,7 @@ func movieByIDHandler(db *sql.DB) http.HandlerFunc {
 			setClauses := []string{}
 			args := []any{}
 			i := 1
-			for _, f := range []string{"my_rating", "review", "vibes", "watched", "watched_on"} {
+			for _, f := range []string{"my_rating", "review", "vibes", "watched", "watched_on", "streaming_services"} {
 				if v, ok := body[f]; ok {
 					setClauses = append(setClauses, fmt.Sprintf("%s=$%d", f, i))
 					args = append(args, v); i++
@@ -386,7 +337,7 @@ func movieByIDHandler(db *sql.DB) http.HandlerFunc {
 				`UPDATE movies SET %s WHERE id=$%d AND user_id=$%d
 				 RETURNING id,user_id,imdb_id,title,year,genre,director,
 				   poster_url,imdb_rating,my_rating,review,vibes,
-				   watched,watched_on::text,added_on::text`,
+				   watched,watched_on::text,streaming_services,added_on::text`,
 				strings.Join(setClauses, ","), i, i+1,
 			), args...)
 			m, err := scanMovie(row)

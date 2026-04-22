@@ -9,16 +9,6 @@ DEBUG = os.environ.get("DJANGO_DEBUG", "True") == "True"
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "*").split(",")
 APPEND_SLASH = False
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "HOST": os.environ.get("DB_HOST", "postgres-svc"),
-        "PORT": os.environ.get("DB_PORT", "5432"),
-        "NAME": "django",
-        "USER": os.environ.get("POSTGRES_USER", "appuser"),
-        "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "apppassword"),
-    }
-}
 INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.contenttypes",
@@ -57,6 +47,17 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "app.wsgi.application"
 
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "HOST": os.environ.get("DB_HOST", "postgres-svc"),
+        "PORT": os.environ.get("DB_PORT", "5432"),
+        "NAME": "django",
+        "USER": os.environ.get("POSTGRES_USER", "appuser"),
+        "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "apppassword"),
+    }
+}
+
 if 'test' in sys.argv:
     DATABASES = {
         "default": {
@@ -65,21 +66,19 @@ if 'test' in sys.argv:
         }
     }
 
-# ── Sessions ──────────────────────────────────────────────────────────────────
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
-SESSION_COOKIE_AGE = 86400  # 24 hours
+SESSION_COOKIE_AGE = 86400
 
-# ── Auth ──────────────────────────────────────────────────────────────────────
-LOGIN_URL          = "/login"
+LOGIN_URL = "/login"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/login"
 
-# ── Static files ──────────────────────────────────────────────────────────────
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# ── Go connector ──────────────────────────────────────────────────────────────
 CONNECTOR_URL = os.environ.get("CONNECTOR_URL", "http://localhost:8080")
+
+RAPIDAPI_KEY = os.environ.get("RAPIDAPI_KEY", "")

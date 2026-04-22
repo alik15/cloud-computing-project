@@ -14,6 +14,7 @@ A 3-pod Kubernetes application stack:
 - [x] Define Limits and requests of each pod considering the size of the cluster
 - [x] Local Tests
 - [x] GitHub Automatic CI/CD
+- [ ] Add ability to check if the tv show/movie is availble for streaming on a website, the user can add their country and choice of streaming service in the settings
 
 ## Structure
 
@@ -160,6 +161,14 @@ gcloud projects add-iam-policy-binding cloud-computing-project-ali \
 
 # 4.5
 kubectl exec -n appns deployment/postgres -- psql -U appuser -d appdb -c "CREATE DATABASE django;"
+
+kubectl exec -n appns deployment/postgres -- psql -U appuser -d django -c "
+CREATE TABLE IF NOT EXISTS app_userprofile (
+    id       SERIAL PRIMARY KEY,
+    user_id  INTEGER NOT NULL UNIQUE REFERENCES auth_user(id) ON DELETE CASCADE,
+    location VARCHAR(100) NOT NULL DEFAULT '',
+    services JSONB NOT NULL DEFAULT '[]'
+);"
 # 5. Push to trigger pipeline
 git add .
 git commit -m "redeploy"

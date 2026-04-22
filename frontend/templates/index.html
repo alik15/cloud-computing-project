@@ -434,6 +434,7 @@
   </nav>
   <div style="display:flex;align-items:center;gap:1rem;padding-bottom:1rem">
     <span style="font-size:0.78rem;color:var(--muted)">{{ user.username }}</span>
+    <a href="/settings" style="background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'DM Sans',sans-serif;font-size:0.75rem;padding:0.35rem 0.9rem;border-radius:4px;text-decoration:none;letter-spacing:0.08em">Settings</a>
     <a href="/logout" style="background:transparent;border:1px solid var(--border);color:var(--muted);font-family:'DM Sans',sans-serif;font-size:0.75rem;padding:0.35rem 0.9rem;border-radius:4px;text-decoration:none;letter-spacing:0.08em">Sign out</a>
   </div>
 </header>
@@ -570,13 +571,14 @@
             <th data-col="my_rating">My Rating <span class="sort-arrow">↕</span></th>
             <th data-col="imdb_rating">IMDB <span class="sort-arrow">↕</span></th>
             <th>Vibes</th>
+            <th>Available On</th>
             <th data-col="watched">Status <span class="sort-arrow">↕</span></th>
             <th data-col="watched_on">Watched On <span class="sort-arrow">↕</span></th>
             <th></th>
           </tr>
         </thead>
         <tbody id="movies-tbody">
-          <tr><td colspan="10" class="loading">Loading…</td></tr>
+          <tr><td colspan="11" class="loading">Loading…</td></tr>
         </tbody>
       </table>
     </div>
@@ -649,28 +651,34 @@
 
 <script>
 // ── State ──────────────────────────────────────────────────────────────────────
-let selectedMovie = null;   // OMDB detail object
+let selectedMovie = null;
 let allMovies = [];
 let sortCol = 'added_on';
 let sortDir = -1;
+let userServices = [];
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+const SERVICE_NAMES = {
+  netflix: 'Netflix', prime: 'Amazon Prime', disney: 'Disney+',
+  hbo: 'HBO Max', apple: 'Apple TV+', hulu: 'Hulu',
+  peacock: 'Peacock', paramount: 'Paramount+', crunchyroll: 'Crunchyroll', mubi: 'Mubi'
+};
+
 const $ = id => document.getElementById(id);
-
-// XSS protection — always use esc() when inserting user data into innerHTML
 function esc(str) {
   const d = document.createElement('div');
   d.textContent = str || '';
   return d.innerHTML;
 }
+// Load user services on startup
+async function loadUserServices() {
+  try {
+    const data = await apiFetch('user/services');
+    userServices = data.services || [];
+  } catch(e) { userServices = []; }
+}
+loadUserServices();
 
-const toast = (msg, dur=3000) => {
-  const t = $('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(t._t);
-  t._t = setTimeout(() => t.classList.remove('show'), dur);
-};
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function starsHtml(n, max=10) {
   if (!n) return '<span style="color:var(--muted)">—</span>';
@@ -682,6 +690,13 @@ function getCsrf() {
   return c ? c.split('=')[1] : '';
 }
 
+const toast = (msg, dur=3000) => {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove('show'), dur);
+};
 async function apiFetch(path, opts={}) {
   const res = await fetch('/api/' + path, {
     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
@@ -747,11 +762,11 @@ async function doSearch() {
     const card = document.createElement('div');
     card.className = 'omdb-card';
     card.innerHTML = `
-      <img src="${esc(m.Poster !== 'N/A' ? m.Poster : '')}" alt="${esc(m.Title)}" loading="lazy"
+      <img src="${m.Poster !== 'N/A' ? m.Poster : ''}" alt="${m.Title}" loading="lazy"
            onerror="this.style.background='var(--muted2)'"/>
       <div class="omdb-card-info">
-        <div class="omdb-card-title">${esc(m.Title)}</div>
-        <div class="omdb-card-year">${esc(m.Year)}</div>
+        <div class="omdb-card-title">${m.Title}</div>
+        <div class="omdb-card-year">${m.Year}</div>
       </div>`;
     card.addEventListener('click', () => selectMovie(m.imdbID, card));
     container.appendChild(card);
@@ -770,10 +785,12 @@ async function selectMovie(imdbID, cardEl) {
 
   $('sel-poster').src = data.Poster !== 'N/A' ? data.Poster : '';
   $('sel-title').textContent = data.Title;
+
   $('sel-meta').innerHTML = `
     <span class="imdb-badge">IMDB</span>${esc(data.imdbRating)}/10 &nbsp;·&nbsp;
-    ${esc(data.Year)} &nbsp;·&nbsp; ${esc(data.Genre)} &nbsp;·&nbsp; Dir. ${esc(data.Director)}`;
-
+    ${esc(data.Year)} &nbsp;·&nbsp; ${esc(data.Genre)} &nbsp;·&nbsp; Dir. ${esc(data.Director)}
+    <span id="streaming-badge" style="font-size:0.78rem">⟳ Checking...</span>`;
+checkStreaming(data.imdbID);
   // reset form
   document.querySelectorAll('#add-form input[type=radio]').forEach(r => r.checked = false);
   $('review-input').value = '';
@@ -781,10 +798,36 @@ async function selectMovie(imdbID, cardEl) {
   $('watched-on-group').style.display = 'none';
   $('vibes-options').querySelectorAll('.vibe-tag').forEach(t => t.classList.remove('active'));
 
+  // Check streaming availability
+  $('sel-meta').innerHTML += ' <span id="streaming-badge" style="color:var(--muted);font-size:0.78rem">Checking availability...</span>';
+  checkStreaming(data.imdbID);
+
   $('add-form').classList.add('visible');
   $('add-form').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
+async function checkStreaming(imdbID) {
+    window._lastStreamingAvailable = []; // reset
+  if (!imdbID) return;
+  const badge = document.getElementById('streaming-badge');
+  if (!badge) return;
+  try {
+    const data = await apiFetch('streaming/check?imdb_id=' + imdbID);
+        window._lastStreamingAvailable = data.available_on || []; // store result
+    const available = data.available_on || [];
+    const userSvcs = data.user_services || [];
+    if (userSvcs.length === 0) {
+      badge.innerHTML = '&nbsp;·&nbsp;<span style="color:#a0aec0">⚙ Set streaming services in Settings</span>';
+    } else if (available.length > 0) {
+      const names = available.map(s => SERVICE_NAMES[s] || s).join(', ');
+      badge.innerHTML = '&nbsp;·&nbsp;<span style="color:#68d391">✓ On ' + esc(names) + '</span>';
+    } else {
+      badge.innerHTML = '&nbsp;·&nbsp;<span style="color:#fc8181">✗ Not on your services</span>';
+    }
+  } catch(e) {
+    if (badge) badge.innerHTML = '';
+  }
+}
 // ── Save movie ────────────────────────────────────────────────────────────────
 $('save-movie-btn').addEventListener('click', async () => {
   if (!selectedMovie) { toast('Select a movie first'); return; }
@@ -806,6 +849,7 @@ $('save-movie-btn').addEventListener('click', async () => {
     vibes:       getVibes($('vibes-options')),
     watched,
     watched_on:  watchedOn || '',
+    streaming_services: window._lastStreamingAvailable || [],
   };
 
   const result = await apiFetch('movies', { method: 'POST', body: JSON.stringify(body) });
@@ -834,14 +878,23 @@ async function loadMovies() {
   if (status === 'watchlist') params.set('watched', 'false');
   if (genre) params.set('genre', genre);
 
-  $('movies-tbody').innerHTML = '<tr><td colspan="10" class="loading">Loading…</td></tr>';
+  $('movies-tbody').innerHTML = '<tr><td colspan="11" class="loading">Loading…</td></tr>';
   const data = await apiFetch('movies?' + params.toString());
   if (data.error) {
-    $('movies-tbody').innerHTML = `<tr><td colspan="10" style="color:var(--accent2);padding:1rem">${data.error}</td></tr>`;
+    $('movies-tbody').innerHTML = `<tr><td colspan="11" style="color:var(--accent2);padding:1rem">${data.error}</td></tr>`;
     return;
   }
   allMovies = data;
   renderTable();
+}
+
+function renderStreaming(services) {
+  if (!services || services.length === 0) {
+    return '<span style="color:var(--muted2);font-size:0.75rem">—</span>';
+  }
+  return services.map(s =>
+    `<span style="background:rgba(232,184,109,0.1);color:var(--accent);font-size:0.68rem;padding:2px 7px;border-radius:20px;margin:1px;display:inline-block">${esc(SERVICE_NAMES[s] || s)}</span>`
+  ).join('');
 }
 
 function renderTable() {
@@ -866,7 +919,7 @@ function renderTable() {
 
   if (!rows.length) {
     $('movies-tbody').innerHTML = `
-      <tr><td colspan="10">
+      <tr><td colspan="11">
         <div class="empty-state">
           <div class="big">🎬</div>
           <p>No movies yet. Add some from the first tab!</p>
@@ -890,6 +943,7 @@ function renderTable() {
       <td style="color:${m.imdb_rating && m.imdb_rating!='N/A'?'var(--accent)':'var(--muted)'}">
         ${m.imdb_rating && m.imdb_rating!='N/A' ? '⭐ '+m.imdb_rating : '—'}</td>
       <td>${vibes || '<span style="color:var(--muted)">—</span>'}</td>
+      <td>${renderStreaming(m.streaming_services)}</td>
       <td>${m.watched
         ? '<span class="watched-badge"></span> Watched'
         : '<span class="unwatched-badge"></span> Watchlist'}</td>
