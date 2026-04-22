@@ -159,7 +159,27 @@ gcloud projects add-iam-policy-binding cloud-computing-project-ali \
   --member="serviceAccount:$PROJECT_NUMBER@cloudbuild.gserviceaccount.com" \
   --role="roles/artifactregistry.writer"
 
-# 4.5
+# 4.5 Connect GitHub repo and create trigger in console:
+# https://console.cloud.google.com/cloud-build/triggers?project=cloud-computing-project-ali
+# → Connect Repository → GitHub → alik15/cloud-computing-project
+# → Create Trigger → Branch: ^main$ → Config: cloudbuild.yaml
+
+# 5. Push to trigger pipeline
+git add .
+git commit -m "redeploy"
+git push origin main
+
+# 6. Watch build logs
+gcloud beta builds log $(gcloud builds list --limit=1 --format='value(id)') --stream
+
+# 7. Point kubectl at dev cluster
+gcloud container clusters get-credentials dev-cluster \
+  --zone=us-central1-a \
+  --project=cloud-computing-project-ali
+
+# 8. Watch pods come up
+kubectl get pods -n appns -w
+
 kubectl exec -n appns deployment/postgres -- psql -U appuser -d appdb -c "CREATE DATABASE django;"
 
 kubectl exec -n appns deployment/postgres -- psql -U appuser -d django -c "
@@ -169,21 +189,6 @@ CREATE TABLE IF NOT EXISTS app_userprofile (
     location VARCHAR(100) NOT NULL DEFAULT '',
     services JSONB NOT NULL DEFAULT '[]'
 );"
-# 5. Push to trigger pipeline
-git add .
-git commit -m "redeploy"
-git push origin main
-
-# 6. Watch build logs
-gcloud builds log $(gcloud builds list --limit=1 --format='value(id)') --stream
-
-# 7. Point kubectl at dev cluster
-gcloud container clusters get-credentials dev-cluster \
-  --zone=us-central1-a \
-  --project=cloud-computing-project-ali
-
-# 8. Watch pods come up
-kubectl get pods -n appns -w
 
 # 9. Patch frontend to LoadBalancer
 kubectl patch svc frontend-svc -n appns \

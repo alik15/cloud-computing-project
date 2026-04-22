@@ -11,7 +11,8 @@ export const options = {
   ],
 };
 
-const BASE_URL = 'http://192.168.18.41:30080';
+//const BASE_URL = 'http://192.168.18.41:30080';
+const BASE_URL = 'http://34.45.77.149';
 
 export default function () {
   const health = http.get(`${BASE_URL}/health`);
