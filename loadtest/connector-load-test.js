@@ -16,14 +16,14 @@ const movieSaveTrend = new Trend('movie_save_duration');
 const movieGetTrend  = new Trend('movie_get_duration');
 
 // ── Config ────────────────────────────────────────────────────────────────────
-const BASE_URL = __ENV.BASE_URL || 'http://34.45.77.149';
+const BASE_URL = __ENV.BASE_URL || 'http://34.41.225.162:8080';
 
 export const options = {
   stages: [
-    { duration: '30s', target: 10  },  // ramp up to 10 users
-    { duration: '1m',  target: 10  },  // hold at 10
-    { duration: '30s', target: 50  },  // ramp up to 50
-    { duration: '1m',  target: 50  },  // hold at 50
+    { duration: '30s', target: 100  },  // ramp up to 10 users
+    { duration: '1m',  target: 100  },  // hold at 10
+    { duration: '30s', target: 500  },  // ramp up to 50
+    { duration: '1m',  target: 500  },  // hold at 50
     { duration: '30s', target: 100 },  // ramp up to 100
     { duration: '1m',  target: 100 },  // hold at 100
     { duration: '30s', target: 0   },  // ramp down
