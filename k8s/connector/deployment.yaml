@@ -54,10 +54,10 @@ spec:
             periodSeconds: 10
           resources:
             requests:
-              cpu: "50m"
+              cpu: "500m"
               memory: "64Mi"
             limits:
-              cpu: "200m"
+              cpu: "2000m"
               memory: "128Mi"
 ---
 apiVersion: v1

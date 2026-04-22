@@ -41,10 +41,10 @@ spec:
             periodSeconds: 10
           resources:
             requests:
-              cpu: "200m"
+              cpu: "500m"
               memory: "128Mi"
             limits:
-              cpu: "1000m"
+              cpu: "1400m"
               memory: "512Mi"
       volumes:
         - name: postgres-storage

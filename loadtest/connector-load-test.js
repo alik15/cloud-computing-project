@@ -16,7 +16,7 @@ const movieSaveTrend = new Trend('movie_save_duration');
 const movieGetTrend  = new Trend('movie_get_duration');
 
 // ── Config ────────────────────────────────────────────────────────────────────
-const BASE_URL = __ENV.BASE_URL || 'http://34.41.225.162:8080';
+const BASE_URL = __ENV.BASE_URL || 'http://136.115.181.119:8080';
 
 export const options = {
   stages: [
