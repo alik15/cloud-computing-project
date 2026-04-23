@@ -27,6 +27,30 @@ python manage.py migrate --noinput auth
 python manage.py migrate --noinput contenttypes
 python manage.py migrate --noinput sessions
 
+echo "==> Creating app_userprofile table if not exists..."
+python manage.py shell -c "
+import psycopg2, os
+conn = psycopg2.connect(
+    host=os.environ.get('DB_HOST', 'postgres-svc'),
+    port=os.environ.get('DB_PORT', '5432'),
+    user=os.environ.get('POSTGRES_USER', 'appuser'),
+    password=os.environ.get('POSTGRES_PASSWORD', 'apppassword'),
+    dbname='django'
+)
+conn.autocommit = True
+cur = conn.cursor()
+cur.execute('''
+    CREATE TABLE IF NOT EXISTS app_userprofile (
+        id       SERIAL PRIMARY KEY,
+        user_id  INTEGER NOT NULL UNIQUE REFERENCES auth_user(id) ON DELETE CASCADE,
+        location VARCHAR(100) NOT NULL DEFAULT \\'\\',
+        services JSONB NOT NULL DEFAULT \\'[]\\' 
+    )
+''')
+print('app_userprofile table ready')
+conn.close()
+"
+
 echo "==> Creating superuser if not exists..."
 python manage.py shell -c "
 from django.contrib.auth import get_user_model
