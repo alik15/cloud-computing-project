@@ -14,7 +14,7 @@ A 3-pod Kubernetes application stack:
 - [x] Define Limits and requests of each pod considering the size of the cluster
 - [x] Local Tests
 - [x] GitHub Automatic CI/CD
-- [ ] Add ability to check if the tv show/movie is availble for streaming on a website, the user can add their country and choice of streaming service in the settings
+- [x] Add ability to check if the tv show/movie is availble for streaming on a website, the user can add their country and choice of streaming service in the settings
 
 ## Structure
 
