@@ -1,0 +1,22 @@
+steps:
+# 1. Build Connector
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/gke-repo/connector:$SHORT_SHA', './connector']
+  id: 'Build Connector'
+
+# 2. Build Frontend
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/gke-repo/frontend:$SHORT_SHA', './frontend']
+  id: 'Build Frontend'
+
+# 3. Push Images
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/gke-repo/connector:$SHORT_SHA']
+  waitFor: ['Build Connector']
+
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/gke-repo/frontend:$SHORT_SHA']
+  waitFor: ['Build Frontend']
+
+options:
+  logging: CLOUD_LOGGING_ONLY
