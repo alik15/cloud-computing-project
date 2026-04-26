@@ -29,7 +29,7 @@ steps:
     gcloud deploy releases create rel-$SHORT_SHA \
       --delivery-pipeline=gke-cicd-pipeline \
       --region=us-central1 \
-      --skaffold-file=infra/skaffold.yaml \
+      --skaffold-file=skaffold.yaml \
       --source=infra \
       --images=connector=us-central1-docker.pkg.dev/$PROJECT_ID/gke-repo/connector:$SHORT_SHA,frontend=us-central1-docker.pkg.dev/$PROJECT_ID/gke-repo/frontend:$SHORT_SHA
   waitFor: ['Build Connector', 'Build Frontend']
