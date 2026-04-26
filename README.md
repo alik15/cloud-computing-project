@@ -3,7 +3,7 @@
 A 3-pod Kubernetes application stack:
 - **PostgreSQL** — database
 - **Go Connector** — REST API / DB middleware
-- **Django Frontend** — HTML UI
+- **Django Frontend** — HTML UI and UX
 
 
 ## To Do List
@@ -15,6 +15,7 @@ A 3-pod Kubernetes application stack:
 - [x] Local Tests
 - [x] GitHub Automatic CI/CD
 - [x] Add ability to check if the tv show/movie is availble for streaming on a website, the user can add their country and choice of streaming service in the settings
+
 
 ## Structure
 
