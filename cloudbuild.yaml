@@ -18,7 +18,6 @@ steps:
   args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/gke-repo/frontend:$SHORT_SHA']
   waitFor: ['Build Frontend']
 
-# 4. Create Cloud Deploy release → auto deploys to dev
 - name: 'google/cloud-sdk:latest'
   entrypoint: 'sh'
   args:
@@ -26,11 +25,11 @@ steps:
   - -c
   - |
     git clone https://github.com/alik15/cloud-computing-project-infra.git infra
+    cp -r infra/* .
     gcloud deploy releases create rel-$SHORT_SHA \
       --delivery-pipeline=gke-cicd-pipeline \
       --region=us-central1 \
       --skaffold-file=skaffold.yaml \
-      --source=infra \
       --images=connector=us-central1-docker.pkg.dev/$PROJECT_ID/gke-repo/connector:$SHORT_SHA,frontend=us-central1-docker.pkg.dev/$PROJECT_ID/gke-repo/frontend:$SHORT_SHA
   waitFor: ['Build Connector', 'Build Frontend']
 
