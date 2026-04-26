@@ -25,6 +25,7 @@ steps:
   - -xe
   - -c
   - |
+    git clone https://github.com/alik15/cloud-computing-project-infra.git infra
     gcloud deploy releases create rel-$SHORT_SHA \
       --delivery-pipeline=gke-cicd-pipeline \
       --region=us-central1 \
