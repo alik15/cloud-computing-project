@@ -3,7 +3,7 @@
 A 3-pod Kubernetes application stack:
 - **PostgreSQL** — database
 - **Go Connector** — REST API / DB middleware
-- **Django Frontend** — HTML UI
+- **Django Frontend** — HTML UI and UX
 
 
 ## To Do List
