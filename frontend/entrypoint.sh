@@ -1,6 +1,22 @@
 #!/bin/sh
 set -e
 
+echo "==> Waiting for postgres to be ready..."
+until python manage.py shell -c "
+import psycopg2, os
+psycopg2.connect(
+    host=os.environ.get('DB_HOST', 'postgres-svc'),
+    port=os.environ.get('DB_PORT', '5432'),
+    user=os.environ.get('POSTGRES_USER', 'appuser'),
+    password=os.environ.get('POSTGRES_PASSWORD', 'apppassword'),
+    dbname='appdb'
+)
+" 2>/dev/null; do
+  echo "Postgres not ready, retrying in 3s..."
+  sleep 3
+done
+echo "Postgres is ready!"
+
 echo "==> Creating django database if not exists..."
 python manage.py shell -c "
 import psycopg2, os
